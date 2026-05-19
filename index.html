@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Panel: Sistema Elétrico Residencial Híbrido V2</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
+                        amber: { 50: '#fffbeb', 100: '#fef3c7', 500: '#f59e0b', 600: '#d97706', 700: '#b45309' },
+                        emerald: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' },
+                        rose: { 50: '#fff1f2', 100: '#ffe4e6', 500: '#f43f5e', 600: '#e11d48' },
+                        blue: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f8fafc; color: #1e293b; }
+        .chart-container { position: relative; width: 100%; height: 260px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="antialiased font-sans">
+
+    <header class="bg-slate-900 text-white border-b-4 border-amber-500 py-6 px-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">⚡</span>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight">Central de Abastecimento Elétrico Paradiso</h1>
+                    <p class="text-xs text-amber-400 font-mono">Dimensionamento, Definições e Simulação de Eficiência</p>
+                </div>
+            </div>
+            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-center md:text-right">
+                <span class="text-xs text-slate-400 block">Nota Importante</span>
+                <span class="text-sm font-bold text-amber-500 font-mono">Sempre indicado consultar um especialista</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-10">
+
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h2 class="text-xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span>📖</span> Guia de Navegação
+            </h2>
+            <p class="text-sm text-slate-600 leading-relaxed mb-4">
+                Esta página é uma ferramenta de simulação e análise para projetos de sistemas de abastecimento residencial híbrido. Ao modificar as entradas do formulário abaixo, o sistema redimensiona dinamicamente as variáveis operacionais, demonstrando o impacto das quedas de tensão e do perfil de consumo nas baterias. Fique atento às tabelas de eficiência e alertas do gerenciador para garantir que os parâmetros permaneçam dentro de margens operacionais seguras.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm">
+                    <strong class="text-amber-900 block mb-1">🌤️ Painéis Solares e Geração Fotovoltaica</strong>
+                    <p class="text-slate-600">Simula a entrada de geração solar. Com valor zero, o sistema calcula o estágio inicial puramente alimentado pela concessionária ou banco de baterias.</p>
+                </div>
+                <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
+                    <strong class="text-emerald-900 block mb-1">🔋 Banco de Baterias</strong>
+                    <p class="text-slate-600">Ao expandir o número de módulos (mínimo 1 e máximo 6), as parametrizações do inversor e a capacidade de condução de corrente se ajustam automaticamente.</p>
+                </div>
+                <div class="p-4 bg-blue-50 rounded-xl border border-blue-100 shadow-sm">
+                    <strong class="text-blue-900 block mb-1">📏 Distâncias dos Trechos (Cabos)</strong>
+                    <p class="text-slate-600">Mapeia as perdas por efeito Joule (dissipação de calor) com base nas distâncias físicas inseridas entre os componentes centrais do circuito.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
+                <span>📋 Parâmetros e Configurações</span>
+                <span class="text-xs font-mono text-slate-400">Valores Ajustáveis</span>
+            </div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-1">Distâncias dos Trechos</h3>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Trecho Solar ➔ Inversor (m)</label>
+                        <input type="number" id="dist-solar" value="25" min="0" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Trecho Bateria ➔ Inversor (m)</label>
+                        <input type="number" id="dist-battery" value="2" min="1" max="15" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-emerald-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Trecho Inversor ➔ Quadro (m)</label>
+                        <input type="number" id="dist-ac" value="10" min="1" max="50" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-1">Geração Fotovoltaica</h3>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Potência de cada Painel (Wp)</label>
+                        <input type="number" id="panel-power" value="550" min="300" max="700" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Quantidade de Painéis</label>
+                        <input type="number" id="panel-qty" value="0" min="0" max="24" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-amber-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-1">Cargas de Consumo</h3>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Equipamentos eletrônicos (W)</label>
+                        <input type="number" id="equip-power" value="350" min="50" max="3000" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-slate-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Ar Condicionado (9k BTU)</label>
+                        <input type="number" id="ac-qty" value="1" min="1" max="4" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-1">Banco de Baterias</h3>
+                    <div>
+                        <label class="block text-[11px] text-slate-500 font-medium mb-1">Quantidade de Baterias</label>
+                        <input type="number" id="battery-qty" value="1" min="1" max="6" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-emerald-500 font-mono outline-none transition-all" oninput="recalculateAll()">
+                    </div>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500 leading-tight">
+                        <span class="font-bold text-slate-700 block mb-0.5">Módulo de Referência:</span>
+                        Cada bloco equivale a uma unidade LiFePO4 de 100Ah operando em 48V nominal (5,12 kWh por unidade).
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-4 flex flex-col justify-between">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <span class="text-xs font-bold uppercase text-slate-400 block tracking-wider">Demanda AC Contínua</span>
+                    <div id="metric-continuous" class="text-3xl font-black text-slate-800 font-mono my-1">1.200 W</div>
+                    <p class="text-xs text-slate-500">Soma das cargas operando simultaneamente na residência.</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <span class="text-xs font-bold uppercase text-slate-400 block tracking-wider">Pico de Consumo (Surto Inversor)</span>
+                    <div id="metric-surge" class="text-3xl font-black text-rose-600 font-mono my-1">4.350 W</div>
+                    <p class="text-xs text-slate-500">Exigência instantânea necessária para a partida de compressores e motores.</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <span class="text-xs font-bold uppercase text-slate-400 block tracking-wider">Capacidade Total Armazenada</span>
+                    <div id="metric-storage" class="text-3xl font-black text-emerald-600 font-mono my-1">5,12 kWh</div>
+                    <p class="text-xs text-slate-500">Reserva nominal total de energia disponível no banco de baterias.</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider border-b border-slate-100 pb-1">📊 Distribuição das Cargas Ativas</h3>
+                <div class="chart-container">
+                    <canvas id="consumptionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider border-b border-slate-100 pb-1">📉 Simulação de Descarga Noturna (18h às 06h)</h3>
+                <div class="chart-container">
+                    <canvas id="dischargeChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-900 text-white p-4 font-bold flex justify-between items-center">
+                <h3 class="text-sm font-bold uppercase tracking-wider">⚡ Eficiência de Condução e Perdas por Dissipação (Efeito Joule)</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table id="efficiencyTable" class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <th class="p-3">Trecho do Circuito</th>
+                            <th class="p-3">Corrente de Projeto (A)</th>
+                            <th class="p-3">Dimensão Sugerida (mm²)</th>
+                            <th class="p-3">Queda de Tensão (V)</th>
+                            <th class="p-3">Queda de Tensão (%)</th>
+                            <th class="p-3">Eficiência do Cabeamento</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-slate-600">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1">🗺️ Diagrama Operacional do Sistema</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-center">
+                    <div id="node-solar" class="p-4 bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-sm">
+                        <span class="text-2xl block">☀️</span>
+                        <span class="text-xs font-bold text-slate-700 block mt-1">Alimentação Fotovoltaica</span>
+                        <span id="topo-solar-p" class="text-[11px] font-mono text-slate-400 block mt-0.5">0 Wp (Inativo)</span>
+                        <span class="text-[10px] font-mono text-slate-400 block mt-1 bg-white p-1 rounded border border-slate-100">STRING BOX DC / DPS + Fusíveis 15A</span>
+                    </div>
+
+                    <div class="p-5 bg-slate-900 text-white border-2 border-amber-500 rounded-xl shadow-md transform hover:scale-[1.01] transition-transform">
+                        <span class="text-2xl block">🎛️</span>
+                        <span class="text-xs font-bold block mt-1">Inversor Híbrido</span>
+                        <span class="text-[10px] text-amber-400 font-mono block mt-0.5">8000W Contínuos / 220V Saída AC</span>
+                        <span class="text-[10px] text-slate-400 font-mono block mt-0.5">Barramento AC: 220V</span>
+                        <span class="text-[10px] text-amber-500 font-mono block mt-0.5 font-bold">MPPT: 150A Max / Bateria: 48V DC</span>
+                    </div>
+
+                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
+                        <span class="text-2xl block">🔌</span>
+                        <span class="text-xs font-bold text-blue-900 block mt-1">Alimentação Concessionária</span>
+                        <span class="text-[11px] font-mono text-blue-600 block mt-0.5">Monofásico / 220V AC</span>
+                        <span class="text-[10px] font-mono text-blue-500 block mt-1 bg-white p-1 rounded border border-blue-100">DISJ. 63A + DPS AC</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-center"><div class="w-0.5 h-6 bg-slate-200"></div></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                    <div id="node-battery" class="p-4 bg-emerald-50 border border-emerald-300 rounded-xl shadow-sm">
+                        <span class="text-2xl block">🔋</span>
+                        <span class="text-xs font-bold text-emerald-900 block mt-1">Banco de Baterias (LiFePO4)</span>
+                        <span id="topo-batt-desc" class="text-[11px] font-mono text-emerald-700 block mt-0.5">48V | 100Ah</span>
+                        <span class="text-[10px] font-mono text-emerald-600 block mt-1 bg-white p-1 rounded border border-emerald-200">DISJ. 200A Proteção DC</span>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+                        <span class="text-2xl block">🏠</span>
+                        <span class="text-xs font-bold text-slate-800 block mt-1">Quadro Geral de Distribuição</span>
+                        <span id="topo-load-desc" class="text-[11px] font-mono text-slate-500 block mt-0.5">1 AC Ativo + Vent.</span>
+                        <span class="text-[10px] font-mono text-slate-400 block mt-1 bg-white p-1 rounded border border-slate-200">DISJ. 50A Curva C</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bms-card" class="p-6 rounded-2xl border text-center flex flex-col justify-center items-center shadow-sm transition-all duration-300">
+                <span id="bms-icon" class="text-4xl mb-2">🟢</span>
+                <h4 id="bms-title" class="font-extrabold text-base text-slate-800 mb-1">Operação Segura</h4>
+                <p id="bms-desc" class="text-xs text-slate-500 leading-relaxed max-w-xs">
+                    Corrente distribuída de forma equilibrada entre os blocos ativos. Nível ideal de funcionamento técnico.
+                </p>
+                <div id="bms-badge" class="mt-4 text-[10px] font-mono uppercase tracking-wider font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-full">
+                    Taxa C: 0.00C
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1">⚙️ Parâmetros Dinâmicos de Configuração do Inversor (Ajustados ao Banco)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-slate-500 block text-[11px] font-sans font-medium">Corrente Máx. de Carga:</span>
+                    <span id="param-charge-curr" class="font-bold text-slate-900 text-sm">40 A</span>
+                    <p class="text-[10px] text-slate-400 font-sans mt-2 leading-normal">Ajustado dinamicamente para preservar o limite saudável de carga e descarga de até 0.4C por bloco ativo.</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-slate-500 block text-[11px] font-sans font-medium">Tensão de Absorção (Bulk V):</span>
+                    <span id="param-bulk-v" class="font-bold text-slate-900 text-sm">56.4 V</span>
+                    <p class="text-[10px] text-slate-400 font-sans mt-2 leading-normal">Equivale a aproximadamente 3.525V por célula, mitigando riscos de sobretensão local durante o balanceamento final.</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-slate-500 block text-[11px] font-sans font-medium">Tensão de Retorno ao Grid:</span>
+                    <span id="param-back-grid" class="font-bold text-slate-900 text-sm">49.0 V</span>
+                    <p class="text-[10px] text-slate-400 font-sans mt-2 leading-normal">Comutação preventiva configurada para acionar a rede externa antes que as células entrem em descarga profunda.</p>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm">
+                    <span class="text-slate-500 block text-[11px] font-sans font-medium">Tensão de Corte DC (Desligamento):</span>
+                    <span class="font-bold text-slate-900 text-sm">47.5 V</span>
+                    <p class="text-[10px] text-slate-400 font-sans mt-2 leading-normal">Limite crítico de segurança de hardware para proteção química estrutural das células de lítio.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-1">🧠 Especificações Operacionais e Regras de Proteção</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-600 leading-relaxed">
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-900 flex items-center gap-1">🧪 Perfil Químico e Degradação (LiFePO4)</h4>
+                    <p>
+                        As células de Fosfato de Ferro-Lítio (LiFePO4) oferecem uma excelente curva de descarga estável com patamar nominal de 3.2V por célula. Mantêm fornecimento constante em cerca de 90% de sua capacidade total de armazenamento.
+                    </p>
+                    <p>
+                        A degradação celular acelerada é evitada limitando os extremos operacionais (estado de carga acima de 100% ou abaixo de 10%) e prevenindo a elevação térmica contínua. Manter a profundidade de descarga (DoD) recomendada em até 80% eleva significativamente a expectativa de vida útil do banco.
+                    </p>
+                </div>
+                
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-900 flex items-center gap-1">🛡️ Sistemas de Proteção Ativa</h4>
+                    <p>
+                        A Placa de Gerenciamento do Banco monitora individualmente as tensões e temperaturas das células em série, atuando nos relés de estado sólido sob os seguintes parâmetros críticos:
+                    </p>
+                    <ul class="list-disc pl-4 space-y-1 font-mono text-[11px] bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700 shadow-sm">
+                        <li><strong>Sobretensão Celular (OVP):</strong> Desconexão de carga ativada a partir de 3.65V por célula.</li>
+                        <li><strong>Subtensão Celular (UVP):</strong> Desconexão de descarga ativada a partir de 2.50V por célula.</li>
+                        <li><strong>Proteção Térmica (OTP):</strong> Bloqueio operacional se qualquer célula atingir 65°C.</li>
+                        <li><strong>Curto-Circuito (SCP):</strong> Atuação magnética/eletrônica imediata em nível de sub-milissegundos.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-50 p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">📋 Lista de Materiais e Componentes do Sistema</h3>
+                <button onclick="exportBOMToCSV()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-3 py-1.5 rounded transition-colors shadow-sm">Exportar Quadro (CSV)</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table id="bomTable" class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <th class="p-3">Equipamento / Componente</th>
+                            <th class="p-3">Infraestrutura / Função</th>
+                            <th class="p-3">Dimensionamento / Especificação Mínima</th>
+                            <th class="p-3">Elemento de Proteção Incorporado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 font-mono text-slate-600">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let consumptionChart = null;
+        let dischargeChart = null;
+        const RHO = 0.0172; // Resistividade do cobre em Ohm*mm²/m
+
+        function recalculateAll() {
+            const dSolar = parseFloat(document.getElementById('dist-solar').value) || 0;
+            const dBattery = parseFloat(document.getElementById('dist-battery').value) || 0;
+            const dAc = parseFloat(document.getElementById('dist-ac').value) || 0;
+            
+            const pPanel = parseFloat(document.getElementById('panel-power').value) || 0;
+            const qPanel = parseInt(document.getElementById('panel-qty').value) || 0;
+            
+            const pEquip = parseFloat(document.getElementById('equip-power').value) || 0;
+            const qAc = parseInt(document.getElementById('ac-qty').value) || 0;
+            const qBattery = parseInt(document.getElementById('battery-qty').value) || 1;
+
+            const pAcTotal = qAc * 850; 
+            const continuousPower = pEquip + pAcTotal;
+            const surgePower = pEquip + (qAc * 4000); 
+            const nominalStorage = qBattery * 5.12;
+
+            document.getElementById('metric-continuous').innerText = continuousPower.toLocaleString() + " W";
+            document.getElementById('metric-surge').innerText = surgePower.toLocaleString() + " W";
+            document.getElementById('metric-storage').innerText = nominalStorage.toFixed(2).replace('.', ',') + " kWh";
+
+            const totalSolarPower = pPanel * qPanel;
+            const vSolarArranjo = qPanel > 0 ? (qPanel * 42) : 0; 
+            const iSolar = vSolarArranjo > 0 ? (totalSolarPower / vSolarArranjo) : 0;
+            const iBatteryMax = continuousPower / 48; 
+            const iAcInverter = continuousPower / 220;
+
+            let sSolar = 4;
+            if (iSolar > 0) {
+                while ((2 * dSolar * iSolar * RHO / sSolar) > (vSolarArranjo * 0.02) && sSolar < 16) { sSolar += 2; }
+            }
+            
+            let sBattery = 16;
+            while ((2 * dBattery * iBatteryMax * RHO / sBattery) > (48 * 0.01) && sBattery < 120) {
+                if (sBattery < 50) sBattery += 9;
+                else sBattery += 20;
+            }
+            if(sBattery > 35 && sBattery < 50) sBattery = 50;
+            if(sBattery > 50 && sBattery < 70) sBattery = 70;
+
+            let sAc = 2.5;
+            while ((2 * dAc * iAcInverter * RHO / sAc) > (220 * 0.015) && sAc < 16) { sAc += 1.5; }
+
+            const vDropSolar = iSolar > 0 ? ((2 * dSolar * iSolar * RHO) / sSolar) : 0;
+            const pDropSolar = vSolarArranjo > 0 ? ((vDropSolar / vSolarArranjo) * 100) : 0;
+            const effSolar = qPanel > 0 ? (100 - pDropSolar) : 100;
+
+            const vDropBattery = (2 * dBattery * iBatteryMax * RHO) / sBattery;
+            const pDropBattery = (vDropBattery / 48) * 100;
+            const effBattery = 100 - pDropBattery;
+
+            const vDropAc = (2 * dAc * iAcInverter * RHO) / sAc;
+            const pDropAc = (vDropAc / 220) * 100;
+            const effAc = 100 - pDropAc;
+
+            const effTbody = document.querySelector('#efficiencyTable tbody');
+            effTbody.innerHTML = `
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="p-3 font-sans font-bold text-slate-800">Trecho Solar DC (Arranjo ➔ Inversor)</td>
+                    <td class="p-3">${iSolar.toFixed(1)} A</td>
+                    <td class="p-3">${qPanel > 0 ? sSolar + " mm²" : "Inativo"}</td>
+                    <td class="p-3">${vDropSolar.toFixed(2)} V</td>
+                    <td class="p-3">${pDropSolar.toFixed(2)} %</td>
+                    <td class="p-3 font-bold ${effSolar < 98 ? 'text-amber-600' : 'text-emerald-600'}">${effSolar.toFixed(2)} %</td>
+                </tr>
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="p-3 font-sans font-bold text-slate-800">Trecho Baterias DC (Banco ➔ Inversor)</td>
+                    <td class="p-3">${iBatteryMax.toFixed(1)} A</td>
+                    <td class="p-3">${sBattery} mm²</td>
+                    <td class="p-3">${vDropBattery.toFixed(2)} V</td>
+                    <td class="p-3">${pDropBattery.toFixed(2)} %</td>
+                    <td class="p-3 font-bold ${effBattery < 99 ? 'text-amber-600' : 'text-emerald-600'}">${effBattery.toFixed(2)} %</td>
+                </tr>
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="p-3 font-sans font-bold text-slate-800">Trecho Geral AC (Inversor ➔ Quadro)</td>
+                    <td class="p-3">${iAcInverter.toFixed(1)} A</td>
+                    <td class="p-3">${sAc.toFixed(1)} mm²</td>
+                    <td class="p-3">${vDropAc.toFixed(2)} V</td>
+                    <td class="p-3">${pDropAc.toFixed(2)} %</td>
+                    <td class="p-3 font-bold ${effAc < 98.5 ? 'text-amber-600' : 'text-emerald-600'}">${effAc.toFixed(2)} %</td>
+                </tr>
+            `;
+
+            const totalAh = qBattery * 100;
+            const cRate = totalAh > 0 ? (iBatteryMax / totalAh) : 0;
+
+            const bmsCard = document.getElementById('bms-card');
+            const bmsIcon = document.getElementById('bms-icon');
+            const bmsTitle = document.getElementById('bms-title');
+            const bmsDesc = document.getElementById('bms-desc');
+            const bmsBadge = document.getElementById('bms-badge');
+            bmsBadge.innerText = `Taxa C: ${cRate.toFixed(2)}C`;
+
+            if (cRate > 1.0) {
+                bmsCard.className = "p-6 rounded-2xl border border-rose-300 bg-rose-50 text-center flex flex-col justify-center items-center shadow-sm animate-pulse";
+                bmsIcon.innerText = "🚨"; bmsTitle.innerText = "Gerenciador Desarmado";
+                bmsDesc.innerText = "A demanda de corrente superou a capacidade imediata de suporte seguro do hardware do barramento protetor (limite crítico > 1C).";
+                bmsBadge.className = "mt-4 text-[10px] font-mono uppercase tracking-wider font-bold bg-rose-200 text-rose-900 px-3 py-1 rounded-full";
+            } else if (cRate > 0.5) {
+                bmsCard.className = "p-6 rounded-2xl border border-amber-300 bg-amber-50 text-center flex flex-col justify-center items-center shadow-sm";
+                bmsIcon.innerText = "⚠️"; bmsTitle.innerText = "Operação Severa";
+                bmsDesc.innerText = "Embora estabilizada por hardware, operar de forma contínua acima de 0.5C induz aquecimento térmico nas células e degrada a vida útil química.";
+                bmsBadge.className = "mt-4 text-[10px] font-mono uppercase tracking-wider font-bold bg-amber-200 text-amber-900 px-3 py-1 rounded-full";
+            } else {
+                bmsCard.className = "p-6 rounded-2xl border border-emerald-300 bg-emerald-50 text-center flex flex-col justify-center items-center shadow-sm";
+                bmsIcon.innerText = "🟢"; bmsTitle.innerText = "Operação Segura";
+                bmsDesc.innerText = "Fluxo de corrente distribuído idealmente entre os módulos ativos. Níveis térmicos e químicos preservados dentro da zona segura.";
+                bmsBadge.className = "mt-4 text-[10px] font-mono uppercase tracking-wider font-bold bg-emerald-200 text-emerald-950 px-3 py-1 rounded-full";
+            }
+
+            const dynamicChargeCurr = Math.min(120, qBattery * 40); 
+            document.getElementById('param-charge-curr').innerText = `${dynamicChargeCurr} A`;
+            const dynamicBulk = qBattery > 1 ? "56.8 V" : "56.4 V"; 
+            document.getElementById('param-bulk-v').innerText = dynamicBulk;
+            const dynamicBackGrid = qBattery === 1 ? "49.5 V" : "49.0 V"; 
+            document.getElementById('param-back-grid').innerText = dynamicBackGrid;
+
+            document.getElementById('topo-solar-p').innerText = `${totalSolarPower.toLocaleString()} Wp (${qPanel} Painéis)`;
+            document.getElementById('node-solar').className = qPanel > 0 ? "p-4 bg-amber-50 border-2 border-amber-400 rounded-xl shadow-sm" : "p-4 bg-slate-50 border border-slate-200 rounded-xl opacity-50 shadow-sm";
+            document.getElementById('topo-batt-desc').innerText = `Banco LFP: ${totalAh}Ah @ 48V`;
+            document.getElementById('topo-load-desc').innerText = `${qAc} AC ativo(s) + Cargas Base`;
+
+            updateCharts(pAcTotal, pEquip, qBattery, continuousPower);
+            updateBOMTable(sSolar, sBattery, sAc, qBattery, qPanel, continuousPower, iSolar);
+        }
+
+        function updateCharts(pAcTotal, pEquip, qBattery, continuousPower) {
+            const ctxCons = document.getElementById('consumptionChart').getContext('2d');
+            if (consumptionChart) consumptionChart.destroy();
+            consumptionChart = new Chart(ctxCons, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ar Condicionado', 'Cargas de Base / Eletrônicos'],
+                    datasets: [{
+                        data: [pAcTotal, pEquip],
+                        backgroundColor: ['#3b82f6', '#f59e0b'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+                }
+            });
+
+            const ctxDisc = document.getElementById('dischargeChart').getContext('2d');
+            if (dischargeChart) dischargeChart.destroy();
+
+            const hoursLabels = ['18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'];
+            let socData = [];
+            let currentEnergy = qBattery * 5120 * 0.95; 
+
+            for (let i = 0; i <= 12; i++) {
+                let percentage = (currentEnergy / (qBattery * 5120)) * 100;
+                if (percentage < 15) percentage = 15;
+                socData.push(Math.round(percentage));
+                if (percentage > 15) {
+                    currentEnergy -= continuousPower;
+                }
+            }
+
+            dischargeChart = new Chart(ctxDisc, {
+                type: 'line',
+                data: {
+                    labels: hoursLabels,
+                    datasets: [{
+                        label: 'Estado de Carga (SoC %)',
+                        data: socData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.04)',
+                        fill: true, tension: 0.2, borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { min: 0, max: 100, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateBOMTable(sSolar, sBattery, sAc, qBattery, qPanel, continuousPower, iSolar) {
+            const tbody = document.querySelector('#bomTable tbody');
+            tbody.innerHTML = '';
+
+            const bomItems = [
+                { name: "Inversor Híbrido Low-Voltage", role: "Inversor Felicity Solar 8kW Off-Grid/Híbrido", cap: "8.000W Nominal / Barramento 48V DC", prot: "By-pass interno programável por relés" },
+                { name: "Módulos de Bateria Estacionária LFP", role: "Ativo Químico LiFePO4 de Alto Ciclo", cap: `${qBattery}x Unidade(s) 48V 100Ah (${(qBattery*5.12).toFixed(2)} kWh total)`, prot: "Placa gerenciadora em cada módulo com OVP/UVP" },
+                { name: "Disjuntor Geral DC do Banco de Baterias", role: "Proteção contra sobrecarga e curto entre Banco e Inversor", cap: "Disjuntor de Caixa Moldada (MCCB) DC de 250A / 125V", prot: "Disparador magnético de alta capacidade de interrupção" },
+                { name: "Fusível de Segurança DC de Retaguarda", role: "Proteção redundante contra curto-circuito severo DC", cap: "Fusível tipo ANL de 250A com porta-fusível isolado", prot: "Elo de fusão rápida de alta interrupção" },
+                { name: "Cabeamento DC de Conexão das Baterias", role: "Condutores principais do barramento de baterias", cap: `${sBattery} mm² - Cobre Flexível Isolamento 1kV`, prot: "Proteção mecânica externa via eletroduto PEAD" },
+                { name: "Disjuntor AC de Entrada da Concessionária", role: "Proteção da linha AC de entrada do bypass externo", cap: "Disjuntor Termomagnético DIN Bipolar 63A Curva C", prot: "Disparador térmico e magnético integrados" },
+                { name: "Disjuntor AC de Saída do Inversor", role: "Proteção geral da linha AC de alimentação da residência", cap: "Disjuntor Termomagnético DIN Bipolar 50A Curva C", prot: "Isolamento mecânico seguro para manutenção a jusante" },
+                { name: "Dispositivo Diferencial Residual (DR)", role: "Proteção contra choques elétricos e fuga de corrente AC", cap: "Interruptor DR Bipolar de 63A / Sensibilidade 30mA", prot: "Desconexão automática instantânea por diferencial de fuga" },
+                { name: "Dispositivos de Proteção contra Surtos AC", role: "Drenagem de surtos atmosféricos e transientes na rede AC", cap: "DPS AC Classe II - Tensão Máxima 275V / In 20kA", prot: "Varistor de Óxido Metálico (MOV) substituível com indicador" },
+                { name: "Cabeamento da Saída Geral AC", role: "Conexão principal entre a saída do Inversor e o Quadro Geral", cap: `${sAc.toFixed(1)} mm² - Condutores de Cobre PVC 750V`, prot: "Conformidade direta com os limites de queda da NBR 5410" }
+            ];
+
+            if (qPanel > 0) {
+                bomItems.push({ name: "Disjuntor da Stringbox DC", role: "Seccionamento e proteção contra sobrecorrente do circuito solar", cap: "Disjuntor Especial DC Bipolar 32A / 1000V DC", prot: "Câmara de extinção magnética de arco elétrico DC" });
+                bomItems.push({ name: "Dispositivos de Proteção contra Surtos DC", role: "Proteção da entrada MPPT contra descargas induzidas nos painéis", cap: "DPS DC Classe II / Tensão Máxima 1000V DC", prot: "Varistores dedicados para regimes de corrente contínua" });
+                bomItems.push({ name: "Fusíveis de Proteção da String solar", role: "Proteção de retaguarda contra correntes reversas no arranjo", cap: "2x Fusíveis gPV de 15A / 1000V com porta-fusíveis embutidos", prot: "Atuação de fusão rápida para arranjos fotovoltaicos" });
+                bomItems.push({ name: "Condutores do Circuito Solar DC", role: "Cabo de descida e interconexão dos painéis até a proteção", cap: `${sSolar} mm² - Cabo Solar Isolamento 1.8kV DC`, prot: "Composto termofixo resistente a raios UV e intempéries" });
+            }
+
+            bomItems.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = "border-b border-slate-100 hover:bg-slate-50 transition-colors";
+                row.innerHTML = `
+                    <td class="p-3 font-sans font-bold text-slate-800">${item.name}</td>
+                    <td class="p-3 font-sans text-slate-500">${item.role}</td>
+                    <td class="p-3 font-semibold text-slate-900">${item.cap}</td>
+                    <td class="p-3 font-sans text-slate-600">${item.prot}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function exportBOMToCSV() {
+            const table = document.getElementById('bomTable');
+            let csv = [];
+            for (let i = 0; i < table.rows.length; i++) {
+                let row = [], cols = table.rows[i].cells;
+                for (let j = 0; j < cols.length; j++) {
+                    row.push('"' + cols[j].innerText.replace(/"/g, '""') + '"');
+                }
+                csv.join ? csv.push(row.join(',')) : null;
+            }
+            const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csv.join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "lista_componentes_protecoes.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            recalculateAll();
+        });
+    </script>
+</body>
+</html>
